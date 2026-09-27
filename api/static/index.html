@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>今天，你吃够了吗？</title>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --panel-rgb: 255, 255, 255;
+    --text: #1c1e21;
+    --muted: #6b7280;
+    --border: #e3e5e8;
+    --accent: #2f7d4f;
+    --accent-rgb: 47, 125, 79;
+    --accent2: #e0812f;
+    --carb-color: #3f7fd1;
+    --calorie-color: #8e6bbf;
+    --accent-bg: #e8f4ec;
+    --user-bubble: #2f7d4f;
+    --user-text: #ffffff;
+    --assistant-bubble-rgb: 255, 255, 255;
+    --trace-bg: #f1f2f4;
+    --ring-track: #e6e8eb;
+    --card-bg-rgb: 255, 255, 255;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16181c;
+      --panel-rgb: 31, 34, 38;
+      --text: #e6e8eb;
+      --muted: #9aa0a8;
+      --border: #2c2f34;
+      --accent: #4caf7d;
+      --accent-rgb: 76, 175, 125;
+      --accent2: #e8a259;
+      --carb-color: #6aa8e8;
+      --calorie-color: #ab8ad6;
+      --accent-bg: #1c2b22;
+      --user-bubble: #3a8f61;
+      --user-text: #ffffff;
+      --assistant-bubble-rgb: 38, 42, 47;
+      --trace-bg: #202327;
+      --ring-track: #33373d;
+      --card-bg-rgb: 38, 42, 47;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+  }
+  body {
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    display: flex;
+    justify-content: center;
+    position: relative;
+    overflow-x: hidden;
+  }
+  .bg-fruit {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 520px;
+    height: 520px;
+    transform: translate(-50%, -50%);
+    opacity: 0.16;
+    pointer-events: none;
+    z-index: 0;
+  }
+  @media (prefers-color-scheme: dark) {
+    .bg-fruit { opacity: 0.10; }
+  }
+  .app {
+    width: 100%;
+    max-width: 640px;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    position: relative;
+    z-index: 1;
+  }
+  header {
+    padding: 14px 16px 16px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(var(--panel-rgb), 0.72);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+  .header-top {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 12px;
+  }
+  header h1 {
+    margin: 0 0 2px;
+    font-size: 17px;
+  }
+  .header-sub {
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+  .header-title { flex: 1; min-width: 0; }
+  .profile-card {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    background: rgba(var(--card-bg-rgb), 0.55);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 6px 8px;
+  }
+  .fitness-icon { width: 26px; height: 26px; color: var(--accent); flex-shrink: 0; }
+  .profile-lines {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.3;
+    white-space: nowrap;
+  }
+  .rings-wrap { position: relative; width: 64px; height: 64px; flex-shrink: 0; }
+  .rings-wrap svg { width: 64px; height: 64px; transform: rotate(-90deg); }
+  .ring-track { fill: none; stroke: var(--ring-track); }
+  .ring-progress { fill: none; stroke-linecap: round; transition: stroke-dashoffset 0.6s ease; }
+  .ring-protein { stroke: var(--accent); }
+  .rings-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .macro-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .macro-card {
+    background: rgba(var(--card-bg-rgb), 0.55);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 9px 11px;
+  }
+  .macro-label {
+    font-size: 11.5px;
+    color: var(--muted);
+    font-weight: 600;
+    margin-bottom: 3px;
+  }
+  .macro-nums {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .macro-nums .macro-target {
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--muted);
+  }
+  .bar-track {
+    height: 6px;
+    border-radius: 999px;
+    background: var(--ring-track);
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 999px;
+    transition: width 0.6s ease;
+  }
+  .bar-fill.protein { background: var(--accent); }
+  .bar-fill.carb { background: var(--carb-color); }
+  .bar-fill.fat { background: var(--accent2); }
+  .bar-fill.calorie { background: var(--calorie-color); }
+  .macro-sub {
+    margin-top: 5px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  #messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .msg-row { display: flex; }
+  .msg-row.user { justify-content: flex-end; }
+  .bubble {
+    max-width: 78%;
+    padding: 10px 14px;
+    border-radius: 14px;
+    line-height: 1.5;
+    font-size: 15px;
+    white-space: pre-wrap;
+  }
+  .msg-row.user .bubble {
+    background: var(--user-bubble);
+    color: var(--user-text);
+    border-bottom-right-radius: 4px;
+  }
+  .msg-row.assistant .bubble {
+    background: rgba(var(--assistant-bubble-rgb), 0.88);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+  }
+  .assistant-block { max-width: 78%; }
+  .trace-toggle {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+  }
+  .trace-toggle:hover { color: var(--accent); }
+  .trace {
+    display: none;
+    margin-top: 8px;
+    background: rgba(var(--assistant-bubble-rgb), 0.9);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 12.5px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--muted);
+  }
+  .trace.open { display: block; }
+  .trace .step { margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px dashed var(--border); }
+  .trace .step:last-child { margin-bottom: 0; border-bottom: none; padding-bottom: 0; }
+  .trace .label { color: var(--accent); font-weight: 600; }
+  .pending { color: var(--muted); font-style: italic; }
+  form#composer {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    background: rgba(var(--panel-rgb), 0.72);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+  .attach-btn {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .attach-btn:hover { border-color: var(--accent); }
+  .photo-preview {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px 0;
+    background: rgba(var(--panel-rgb), 0.72);
+  }
+  .photo-preview.show { display: flex; }
+  .photo-preview img {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+  .photo-preview .remove {
+    font-size: 12.5px;
+    color: var(--muted);
+    cursor: pointer;
+    background: var(--trace-bg);
+    border-radius: 999px;
+    padding: 5px 12px;
+  }
+  #input {
+    flex: 1;
+    padding: 10px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    outline: none;
+  }
+  #input:focus { border-color: var(--accent); }
+  #send {
+    padding: 0 18px;
+    border: none;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  #send:disabled { opacity: 0.5; cursor: default; }
+</style>
+</head>
+<body>
+
+<svg class="bg-fruit" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <circle cx="200" cy="200" r="185" fill="#ffffff" opacity="0.55"/>
+  <circle cx="200" cy="200" r="185" fill="none" stroke="#c9ccd1" stroke-width="2"/>
+
+  <g transform="translate(145,125)">
+    <circle r="46" fill="#ffb347"/>
+    <circle r="46" fill="none" stroke="#f08a1e" stroke-width="3"/>
+    <g stroke="#fff8ec" stroke-width="2.5">
+      <line x1="-40" y1="0" x2="40" y2="0" transform="rotate(0)"/>
+      <line x1="-40" y1="0" x2="40" y2="0" transform="rotate(30)"/>
+      <line x1="-40" y1="0" x2="40" y2="0" transform="rotate(60)"/>
+      <line x1="-40" y1="0" x2="40" y2="0" transform="rotate(90)"/>
+      <line x1="-40" y1="0" x2="40" y2="0" transform="rotate(120)"/>
+      <line x1="-40" y1="0" x2="40" y2="0" transform="rotate(150)"/>
+    </g>
+  </g>
+
+  <g transform="translate(272,145)">
+    <circle r="34" fill="#cfe378"/>
+    <circle r="21" fill="#eef7c9"/>
+    <g fill="#3a2e1a">
+      <circle cx="0" cy="-14" r="2"/>
+      <circle cx="10" cy="-8" r="2"/>
+      <circle cx="13" cy="4" r="2"/>
+      <circle cx="6" cy="13" r="2"/>
+      <circle cx="-6" cy="13" r="2"/>
+      <circle cx="-13" cy="4" r="2"/>
+      <circle cx="-10" cy="-8" r="2"/>
+    </g>
+  </g>
+
+  <g transform="translate(150,262)">
+    <path d="M0,-18 C22,-24 27,4 0,28 C-27,4 -22,-24 0,-18 Z" fill="#ea4b5c"/>
+    <g fill="#ffd9dc">
+      <circle cx="-8" cy="-4" r="1.6"/>
+      <circle cx="6" cy="-2" r="1.6"/>
+      <circle cx="-4" cy="8" r="1.6"/>
+      <circle cx="8" cy="10" r="1.6"/>
+      <circle cx="0" cy="-10" r="1.6"/>
+    </g>
+    <path d="M-9,-20 L0,-30 L9,-20 C4,-24 -4,-24 -9,-20 Z" fill="#4caf50"/>
+  </g>
+
+  <g transform="translate(262,268)" fill="#8e6bbf">
+    <circle cx="0" cy="0" r="11"/>
+    <circle cx="15" cy="7" r="11"/>
+    <circle cx="-15" cy="7" r="11"/>
+    <circle cx="7.5" cy="22" r="11"/>
+    <circle cx="-7.5" cy="22" r="11"/>
+    <circle cx="0" cy="37" r="11"/>
+  </g>
+
+  <g transform="translate(205,92) rotate(15)" fill="#5fae62">
+    <path d="M0,0 C12,-16 28,-10 22,6 C16,22 0,20 0,0 Z"/>
+    <path d="M2,-2 L18,-6" stroke="#3f8a44" stroke-width="1.4" fill="none"/>
+  </g>
+</svg>
+
+<div class="app">
+  <header>
+    <div class="header-top">
+      <div class="profile-card" id="profileCard">
+        <svg class="fitness-icon" viewBox="0 0 60 60" aria-hidden="true">
+          <circle cx="30" cy="13" r="6" fill="currentColor"/>
+          <path d="M30 19 L30 40" stroke="currentColor" stroke-width="5" stroke-linecap="round" fill="none"/>
+          <path d="M30 22 L18 28 L14 16" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <path d="M30 22 L42 28 L46 16" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <path d="M30 40 L22 56" stroke="currentColor" stroke-width="5" stroke-linecap="round" fill="none"/>
+          <path d="M30 40 L38 56" stroke="currentColor" stroke-width="5" stroke-linecap="round" fill="none"/>
+        </svg>
+        <div class="profile-lines">
+          <span id="profileGender">--</span>
+          <span id="profileAge">--</span>
+          <span id="profileGoal">--</span>
+        </div>
+      </div>
+      <div class="rings-wrap">
+        <svg viewBox="0 0 64 64">
+          <circle class="ring-track" cx="32" cy="32" r="27" stroke-width="6"/>
+          <circle id="ringProtein" class="ring-progress ring-protein" cx="32" cy="32" r="27" stroke-width="6"/>
+        </svg>
+        <div class="rings-center" id="ringsCenter">--</div>
+      </div>
+      <div class="header-title">
+        <h1>🍽️ 今天，你吃够了吗？</h1>
+        <div class="header-sub" id="headerSub">加载今日进度中...</div>
+      </div>
+    </div>
+
+    <div class="macro-grid">
+      <div class="macro-card">
+        <div class="macro-label">蛋白质</div>
+        <div class="macro-nums"><span id="proteinCurrent">--</span><span class="macro-target">g</span></div>
+        <div class="bar-track"><div class="bar-fill protein" id="proteinBar"></div></div>
+        <div class="macro-sub" id="proteinSub">未设置目标</div>
+      </div>
+      <div class="macro-card">
+        <div class="macro-label">碳水</div>
+        <div class="macro-nums"><span id="carbCurrent">--</span><span class="macro-target">g</span></div>
+        <div class="bar-track"><div class="bar-fill carb" id="carbBar"></div></div>
+        <div class="macro-sub" id="carbSub">未设置目标</div>
+      </div>
+      <div class="macro-card">
+        <div class="macro-label">脂肪</div>
+        <div class="macro-nums"><span id="fatCurrent">--</span><span class="macro-target">g</span></div>
+        <div class="bar-track"><div class="bar-fill fat" id="fatBar"></div></div>
+        <div class="macro-sub" id="fatSub">未设置目标</div>
+      </div>
+      <div class="macro-card">
+        <div class="macro-label">热量</div>
+        <div class="macro-nums"><span id="calorieCurrent">--</span><span class="macro-target">kcal</span></div>
+        <div class="bar-track"><div class="bar-fill calorie" id="calorieBar"></div></div>
+        <div class="macro-sub" id="calorieSub">未设置目标</div>
+      </div>
+    </div>
+  </header>
+
+  <div id="messages"></div>
+
+  <div class="photo-preview" id="photoPreview">
+    <img id="photoPreviewImg" alt="预览">
+    <span class="remove" id="photoRemove">移除照片</span>
+  </div>
+  <form id="composer">
+    <button type="button" class="attach-btn" id="attachBtn" title="拍照 / 选图">📷</button>
+    <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none">
+    <input id="input" type="text" placeholder="说说你吃了什么，或者问问今天的进度…" autocomplete="off" />
+    <button id="send" type="submit">发送</button>
+  </form>
+</div>
+
+<script>
+  const messagesEl = document.getElementById('messages');
+  const form = document.getElementById('composer');
+  const input = document.getElementById('input');
+  const sendBtn = document.getElementById('send');
+  const headerSub = document.getElementById('headerSub');
+  const profileCard = document.getElementById('profileCard');
+  const ringProtein = document.getElementById('ringProtein');
+  const ringsCenter = document.getElementById('ringsCenter');
+  const attachBtn = document.getElementById('attachBtn');
+  const fileInput = document.getElementById('fileInput');
+  const photoPreview = document.getElementById('photoPreview');
+  const photoPreviewImg = document.getElementById('photoPreviewImg');
+  const photoRemove = document.getElementById('photoRemove');
+
+  let pendingPhotoFile = null;
+
+  attachBtn.addEventListener('click', () => fileInput.click());
+
+  fileInput.addEventListener('change', () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+    pendingPhotoFile = file;
+    photoPreviewImg.src = URL.createObjectURL(file);
+    photoPreview.classList.add('show');
+  });
+
+  photoRemove.addEventListener('click', () => {
+    pendingPhotoFile = null;
+    fileInput.value = '';
+    photoPreview.classList.remove('show');
+  });
+
+  async function uploadPhoto(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch('/upload-image', { method: 'POST', body: formData });
+    if (!res.ok) throw new Error('图片上传失败');
+    const data = await res.json();
+    return data.path;
+  }
+
+  const PROTEIN_R = 27;
+  const PROTEIN_C = 2 * Math.PI * PROTEIN_R;
+  ringProtein.style.strokeDasharray = PROTEIN_C;
+
+  function setRing(el, circumference, fraction) {
+    const clamped = Math.max(0, Math.min(1, fraction));
+    el.style.strokeDashoffset = circumference * (1 - clamped);
+  }
+
+  function setMacroCard(prefix, current, target, unit, isBudget) {
+    const currentEl = document.getElementById(`${prefix}Current`);
+    currentEl.textContent = current;
+    const targetEl = currentEl.nextElementSibling;
+    const barEl = document.getElementById(`${prefix}Bar`);
+    const subEl = document.getElementById(`${prefix}Sub`);
+
+    if (target === undefined || target === null) {
+      targetEl.textContent = unit;
+      barEl.style.width = '0%';
+      subEl.textContent = '未设置目标';
+      return;
+    }
+
+    targetEl.textContent = ` / ${target}${unit}`;
+    const fraction = target > 0 ? current / target : 0;
+    barEl.style.width = `${Math.max(0, Math.min(1, fraction)) * 100}%`;
+
+    const remaining = target - current;
+    if (isBudget) {
+      subEl.textContent = remaining >= 0 ? `还可摄入 ${remaining.toFixed(1)}${unit}` : `已超出 ${Math.abs(remaining).toFixed(1)}${unit}`;
+    } else {
+      subEl.textContent = remaining > 0 ? `还差 ${remaining.toFixed(1)}${unit}` : '已达成 🎉';
+    }
+  }
+
+  function addUserMessage(text, imageUrl) {
+    const row = document.createElement('div');
+    row.className = 'msg-row user';
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    if (imageUrl) {
+      const img = document.createElement('img');
+      img.src = imageUrl;
+      img.style.cssText = 'max-width:160px;border-radius:10px;display:block;margin-bottom:6px;';
+      bubble.appendChild(img);
+    }
+    if (text) {
+      const textEl = document.createElement('div');
+      textEl.textContent = text;
+      bubble.appendChild(textEl);
+    }
+    row.appendChild(bubble);
+    messagesEl.appendChild(row);
+    scrollToBottom();
+  }
+
+  function addAssistantPending() {
+    const row = document.createElement('div');
+    row.className = 'msg-row assistant';
+    row.innerHTML = `<div class="bubble pending">思考中…</div>`;
+    messagesEl.appendChild(row);
+    scrollToBottom();
+    return row;
+  }
+
+  function renderAssistant(row, data) {
+    const block = document.createElement('div');
+    block.className = 'assistant-block';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = data.final_answer || '（没有得到最终答案）';
+    block.appendChild(bubble);
+
+    if (data.steps && data.steps.length) {
+      const toggle = document.createElement('div');
+      toggle.className = 'trace-toggle';
+      toggle.textContent = `▸ 查看推理过程（${data.steps.length} 步）`;
+
+      const trace = document.createElement('div');
+      trace.className = 'trace';
+      trace.innerHTML = data.steps.map((s, i) => `
+        <div class="step">
+          <div><span class="label">Step ${i + 1} · Thought</span> ${escapeHtml(s.thought || '')}</div>
+          ${s.action ? `<div><span class="label">Action</span> ${escapeHtml(s.action)}</div>` : ''}
+          ${s.action_input ? `<div><span class="label">Action Input</span> ${escapeHtml(s.action_input)}</div>` : ''}
+          ${s.observation ? `<div><span class="label">Observation</span> ${escapeHtml(s.observation)}</div>` : ''}
+          ${s.final_answer ? `<div><span class="label">Final Answer</span> ${escapeHtml(s.final_answer)}</div>` : ''}
+        </div>
+      `).join('');
+
+      toggle.addEventListener('click', () => {
+        trace.classList.toggle('open');
+        toggle.textContent = trace.classList.contains('open')
+          ? `▾ 收起推理过程（${data.steps.length} 步）`
+          : `▸ 查看推理过程（${data.steps.length} 步）`;
+      });
+
+      block.appendChild(toggle);
+      block.appendChild(trace);
+    }
+
+    row.innerHTML = '';
+    row.appendChild(block);
+    scrollToBottom();
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function scrollToBottom() {
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  async function refreshSummary() {
+    try {
+      const res = await fetch('/summary');
+      const data = await res.json();
+
+      const proteinFraction = data.protein_target ? data.total_protein / data.protein_target : 0;
+      setRing(ringProtein, PROTEIN_C, proteinFraction);
+      ringsCenter.textContent = data.protein_target ? `${Math.round(proteinFraction * 100)}%` : '--';
+      headerSub.textContent = data.protein_target
+        ? `今天已进行到蛋白质目标的 ${Math.round(proteinFraction * 100)}%`
+        : '还没有设置个人资料和目标';
+
+      setMacroCard('protein', data.total_protein, data.protein_target, 'g', false);
+      setMacroCard('carb', data.total_carbs, data.carb_target, 'g', false);
+      setMacroCard('fat', data.total_fat, data.fat_target, 'g', false);
+      setMacroCard('calorie', data.total_calories, data.calorie_target, 'kcal', true);
+    } catch (e) {
+      headerSub.textContent = '今日进度加载失败';
+    }
+  }
+
+  async function refreshProfile() {
+    try {
+      const res = await fetch('/profile');
+      const p = await res.json();
+      if (!p || !p.gender) {
+        profileCard.style.display = 'none';
+        return;
+      }
+      profileCard.style.display = 'flex';
+      document.getElementById('profileGender').textContent = p.gender === '男' ? '👨' : (p.gender === '女' ? '👩' : p.gender);
+      const bracketStart = Math.floor(p.age / 10) * 10;
+      document.getElementById('profileAge').textContent = `${bracketStart}-${bracketStart + 10}岁`;
+      document.getElementById('profileGoal').textContent = p.goal || '--';
+    } catch (e) {
+      profileCard.style.display = 'none';
+    }
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = input.value.trim();
+    const photoFile = pendingPhotoFile;
+    if (!text && !photoFile) return;
+
+    const previewUrl = photoFile ? URL.createObjectURL(photoFile) : null;
+    addUserMessage(text, previewUrl);
+    input.value = '';
+    pendingPhotoFile = null;
+    fileInput.value = '';
+    photoPreview.classList.remove('show');
+    sendBtn.disabled = true;
+    const pendingRow = addAssistantPending();
+
+    try {
+      let finalMessage = text;
+      if (photoFile) {
+        pendingRow.querySelector('.bubble').textContent = '上传图片中…';
+        const path = await uploadPhoto(photoFile);
+        finalMessage = text
+          ? `我还吃了：${text}。另外还有一张照片，如果照片里是别的食物，两个都要分别记录。\n图片路径：${path}`
+          : `看看这张图片里是什么食物，需要的话记录下来\n图片路径：${path}`;
+        pendingRow.querySelector('.bubble').textContent = '思考中…';
+      }
+
+      const res = await fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: finalMessage })
+      });
+      if (!res.ok) throw new Error('请求失败 ' + res.status);
+      const data = await res.json();
+      renderAssistant(pendingRow, data);
+    } catch (err) {
+      pendingRow.querySelector('.bubble').textContent = '出错了：' + err.message;
+      pendingRow.querySelector('.bubble').classList.remove('pending');
+    } finally {
+      sendBtn.disabled = false;
+      input.focus();
+      refreshSummary();
+      refreshProfile();
+    }
+  });
+
+  refreshSummary();
+  refreshProfile();
+</script>
+</body>
+</html>
